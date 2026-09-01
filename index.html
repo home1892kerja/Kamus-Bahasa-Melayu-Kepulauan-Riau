@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kamus Bahasa Melayu Kepulauan Riau - Indonesia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fcfbf9; }
+        .lema-title { font-family: 'Merriweather', serif; }
+        .badge-n { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; } 
+        .badge-v { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; } 
+        .badge-a { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; } 
+        .badge-default { background-color: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+        .huruf-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        .huruf-btn.active {
+            background-color: #b45309;
+            color: white;
+            border-color: #b45309;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);
+        }
+        .lema-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .lema-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
+        }
+    </style>
+</head>
+<body class="text-slate-900 p-3 md:p-8 antialiased">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header Kamus -->
+        <header class="text-center mb-8 border-b border-slate-100/40 pb-6">
+            <div class="header-kamus">
+    <img src="logo.png" alt="Logo Kamus" class="logo-img">
+</div>
+            <h1 class="text-2xl md:text-4xl font-bold lema-title text-slate-800 tracking-tight mb-2">
+                Kamus Bahasa Melayu Kepulauan Riau – Indonesia
+            </h1>
+            <p class="text-xs md:text-sm text-slate-500 font-medium tracking-wide">
+                Kantor Bahasa Provinsi Kepulauan Riau
+            </p>
+        </header>
+
+        <!-- Status / Loading -->
+        <div id="statusMuat" class="text-center py-20 text-slate-400 text-sm italic animate-pulse">
+            Memuat pangkalan data leksikon...
+        </div>
+
+        <!-- Area Utama Kamus -->
+        <div id="wrapperUtama" class="hidden opacity-0 transition-opacity duration-500">
+            
+            <!-- Kotak Pencarian Fluid -->
+            <div class="sticky top-4 z-20 bg-[#fcfbf9]/90 backdrop-blur-md pt-2 pb-4 mb-4">
+                <div class="relative shadow-sm rounded-2xl">
+                    <input type="text" id="kolomCari" placeholder="Cari lema, sublema, atau makna kata..." class="w-full pl-5 pr-12 py-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 focus:border-transparent text-base md:text-lg shadow-sm transition-all">
+                    <span class="absolute right-4 top-4 text-slate-400 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Menu Navigasi Abjad (A - Z) -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm mb-6">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-1">Indeks Abjad</div>
+                <div id="menuAbjad" class="flex flex-wrap gap-1.5">
+                    <button onclick="filterBerdasarkanHuruf('SEMUA')" id="btn-SEMUA" class="huruf-btn active px-3.5 py-1.5 text-xs md:text-sm font-semibold rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-amber-100">
+                        Semua
+                    </button>
+                </div>
+            </div>
+
+            <!-- Informasi Jumlah Hasil -->
+            <div class="flex justify-between items-center mb-4 px-2 text-xs text-slate-500 font-medium">
+                <span id="teksHasil">Menampilkan 0 entri</span>
+                <span id="infoFilter" class="italic text-amber-700 font-semibold"></span>
+            </div>
+
+            <!-- Daftar Hasil Entri Kamus -->
+            <div id="daftarKamus" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <script>
+        let kamusData = [];
+        let hurufAktif = 'SEMUA';
+
+        function getBadgeClass(ps) {
+            if(!ps) return 'hidden';
+            const type = ps.toLowerCase().split(' ')[0];
+            if(type === 'n') return 'badge-n';
+            if(type === 'v') return 'badge-v';
+            if(type === 'a') return 'badge-a';
+            return 'badge-default';
+        }
+
+        function buatMenuAbjad() {
+            const menuContainer = document.getElementById('menuAbjad');
+            const alfabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
+            
+            alfabet.forEach(huruf => {
+                const btn = document.createElement('button');
+                btn.id = `btn-${huruf}`;
+                btn.className = "huruf-btn px-3.5 py-1.5 text-xs md:text-sm font-semibold rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-amber-100";
+                btn.innerText = huruf;
+                btn.onclick = () => filterBerdasarkanHuruf(huruf);
+                menuContainer.appendChild(btn);
+            });
+        }
+
+        function renderKamus(data) {
+            const container = document.getElementById('daftarKamus');
+            container.innerHTML = '';
+            document.getElementById('teksHasil').innerText = `Menampilkan ${data.length} entri`;
+
+            if(data.length === 0) {
+                container.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400 italic shadow-sm">Kata atau ungkapan tidak ditemukan.</div>`;
+                return;
+            }
+
+            let html = '';
+            data.forEach(entri => {
+                html += `
+                <div class="lema-card bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200/80">
+                    <div class="flex items-baseline gap-3 flex-wrap mb-2 border-b border-slate-100 pb-3">
+                        <h2 class="text-xl md:text-2xl font-bold lema-title text-slate-900 tracking-tight">
+                            ${entri.lema} ${entri.homonim ? `<sup class="text-xs font-sans text-amber-700 font-semibold ml-0.5">${entri.homonim}</sup>` : ''}
+                        </h2>
+                        ${entri.kelas_kata ? `<span class="px-2.5 py-0.5 text-xs font-semibold rounded-md ${getBadgeClass(entri.kelas_kata)}">${entri.kelas_kata}</span>` : ''}
+                    </div>
+                `;
+
+                // Penanganan Rujukan Silang (Non-headlema / Lihat ...)
+                if (entri.rujukan && entri.rujukan.trim() !== "") {
+                    html += `<div class="text-sm text-slate-500 mt-2">→ lihat <span class="font-semibold text-amber-700 cursor-pointer hover:underline" onclick="cariRujukan('${entri.rujukan}')">${entri.rujukan}</span></div>`;
+                }
+
+                if(entri.definisi && entri.definisi.length > 0) {
+                    html += `<ol class="list-decimal list-inside space-y-1.5 text-slate-800 mt-3 text-sm md:text-base leading-relaxed">`;
+                    entri.definisi.forEach(def => { 
+                        html += `<li class="pl-1"><span class="text-slate-900">${def}</span></li>`; 
+                    });
+                    html += `</ol>`;
+                }
+
+                if(entri.contoh_kalimat && entri.contoh_kalimat.length > 0) {
+                    html += `<div class="mt-4 space-y-2 bg-amber-50/40 p-4 rounded-xl border-l-4 border-amber-600 text-sm">`;
+                    entri.contoh_kalimat.forEach(contoh => {
+                        html += `<div><p class="italic text-slate-700 font-serif">“${contoh.contoh}”</p><p class="text-slate-500 text-xs mt-0.5">${contoh.terjemahan}</p></div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                if(entri.turunan && entri.turunan.length > 0) {
+                    html += `<div class="mt-5 pt-3 border-t border-slate-100 space-y-3">
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sublema / Turunan</p>`;
+                    
+                    entri.turunan.forEach(sub => {
+                        html += `
+                        <div class="bg-stone-50/60 p-3.5 rounded-xl border border-slate-100/80">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <h3 class="font-bold lema-title text-slate-800 text-sm md:text-base">${sub.lema_turunan}</h3>
+                                ${sub.kelas_kata ? `<span class="px-2 py-0.5 text-[10px] font-semibold rounded ${getBadgeClass(sub.kelas_kata)}">${sub.kelas_kata}</span>` : ''}
+                            </div>
+                        `;
+                        if(sub.definisi && sub.definisi.length > 0) {
+                            html += `<ul class="list-disc list-inside text-xs md:text-sm text-slate-700 ml-2 space-y-1">`;
+                            sub.definisi.forEach(def => { html += `<li>${def}</li>`; });
+                            html += `</ul>`;
+                        }
+                        if(sub.contoh_kalimat && sub.contoh_kalimat.length > 0) {
+                            html += `<div class="ml-4 mt-2 space-y-1 border-l-2 border-amber-500/50 pl-3 text-xs">`;
+                            sub.contoh_kalimat.forEach(contoh => {
+                                html += `<p class="italic text-slate-600 font-serif">“${contoh.contoh}” — <span class="text-slate-400">${contoh.terjemahan}</span></p>`;
+                            });
+                            html += `</div>`;
+                        }
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function filterBerdasarkanHuruf(huruf) {
+            hurufAktif = huruf;
+            document.querySelectorAll('.huruf-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${huruf}`).classList.add('active');
+            document.getElementById('kolomCari').value = '';
+
+            if (huruf === 'SEMUA') {
+                document.getElementById('infoFilter').innerText = '';
+                renderKamus(kamusData);
+                return;
+            }
+
+            document.getElementById('infoFilter').innerText = `Filter abjad: [ ${huruf} ]`;
+            const hasilFilter = kamusData.filter(entri => entri.lema.toUpperCase().startsWith(huruf));
+            renderKamus(hasilFilter);
+        }
+
+        window.cariRujukan = function(kata) {
+            document.getElementById('kolomCari').value = kata;
+            document.getElementById('kolomCari').dispatchEvent(new Event('input'));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        const URL_DATA_JSON = 'kamus_kepri_2026.json'; // Atau URL raw GitHub Anda
+
+        fetch(URL_DATA_JSON)
+            .then(response => response.json())
+            .then(data => {
+                kamusData = data;
+                kamusData.sort((a, b) => a.lema.localeCompare(b.lema));
+
+                const wrapper = document.getElementById('wrapperUtama');
+                document.getElementById('statusMuat').style.display = 'none';
+                wrapper.style.display = 'block';
+                setTimeout(() => wrapper.classList.remove('opacity-0'), 50);
+                
+                buatMenuAbjad();
+                renderKamus(kamusData);
+            })
+            .catch(error => {
+                document.getElementById('statusMuat').innerHTML = '<span class="text-red-600">Gagal memuat data kamus. Pastikan file JSON tersedia.</span>';
+                console.error(error);
+            });
+
+        document.getElementById('kolomCari').addEventListener('input', function(e) {
+            const kataKunci = e.target.value.toLowerCase().trim();
+            
+            if(!kataKunci) {
+                filterBerdasarkanHuruf(hurufAktif);
+                return;
+            }
+
+            document.querySelectorAll('.huruf-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-SEMUA').classList.add('active');
+            document.getElementById('infoFilter').innerText = `Pencarian: "${kataKunci}"`;
+
+            const hasilFilter = kamusData.filter(entri => {
+                if(entri.lema.toLowerCase().includes(kataKunci)) return true;
+                if(entri.definisi && entri.definisi.some(def => def.toLowerCase().includes(kataKunci))) return true;
+                if(entri.turunan && entri.turunan.some(sub => sub.lema_turunan.toLowerCase().includes(kataKunci))) return true;
+                return false;
+            });
+
+            renderKamus(hasilFilter);
+        });
+    </script>
+</body>
+</html>
